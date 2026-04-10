@@ -1,6 +1,6 @@
 {
-  "name": "diagram-drc",
-  "version": "0.1.0",
+  "name": "@de-otio/diagram-drc",
+  "version": "0.1.1",
   "description": "Design Rule Check engine for auto-generated diagrams",
   "type": "module",
   "exports": {
@@ -36,7 +36,7 @@
     "prepublishOnly": "npm run build"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "repository": {
     "type": "git",
