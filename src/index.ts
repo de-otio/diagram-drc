@@ -10,7 +10,7 @@ export type {
 export { DrcEngine, createEngine } from './engine.js';
 
 // Built-in rules
-export { builtinRules, CrossingMinimizationRule, SpacingRule } from './rules/index.js';
+export { builtinRules, CrossingMinimizationRule, RankCompactionRule, SpacingRule } from './rules/index.js';
 
 // Layout
 export { dagreLayout } from './layout/index.js';
