@@ -1,4 +1,4 @@
-import { DrcEngine } from '../engine.js';
+import { DrcEngine, createEngine } from '../engine.js';
 import type { LayoutResult, GraphSpec, LayoutRule, Violation } from '../types.js';
 
 const spec: GraphSpec = {
@@ -78,5 +78,28 @@ describe('DrcEngine', () => {
     expect(report.results[0].passed).toBe(true);
     expect(report.results[1].ruleId).toBe('fail');
     expect(report.results[1].passed).toBe(false);
+  });
+
+  it('createEngine returns a usable DrcEngine', () => {
+    const engine = createEngine({ rules: [passingRule] });
+    const report = engine.check(layout, spec);
+    expect(report.passed).toBe(true);
+    expect(engine).toBeInstanceOf(DrcEngine);
+  });
+
+  it('fix clones edge points correctly', () => {
+    const layoutWithPoints: LayoutResult = {
+      nodes: new Map([
+        ['a', { id: 'a', x: 100, y: 100, width: 50, height: 50 }],
+        ['b', { id: 'b', x: 200, y: 200, width: 50, height: 50 }],
+      ]),
+      edges: [{ source: 'a', target: 'b', points: [{ x: 150, y: 150 }] }],
+      width: 300,
+      height: 300,
+    };
+    const engine = new DrcEngine({ rules: [passingRule] });
+    const { layout: fixed } = engine.fix(layoutWithPoints, spec);
+    expect(fixed.edges[0].points).toHaveLength(1);
+    expect(fixed.edges[0].points[0]).toEqual({ x: 150, y: 150 });
   });
 });
