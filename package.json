@@ -1,6 +1,6 @@
 {
   "name": "@de-otio/diagram-drc",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Design Rule Check engine for auto-generated diagrams",
   "type": "module",
   "exports": {
