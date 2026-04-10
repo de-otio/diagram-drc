@@ -26,8 +26,8 @@ const DEFAULTS: Required<LayoutOptions> = {
   nodesep: 80,
   marginx: 60,
   marginy: 60,
-  groupMinWidth: 250,
-  groupMinHeight: 140,
+  groupMinWidth: 150,
+  groupMinHeight: 100,
 };
 
 export function dagreLayout(spec: GraphSpec, options?: LayoutOptions): LayoutResult {
