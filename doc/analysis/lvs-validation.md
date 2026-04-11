@@ -6,7 +6,7 @@ In IC design, LVS checks whether the physical layout faithfully implements the i
 
 ## Why This Matters
 
-The current rule pipeline assumes the layout is structurally correct and only fixes geometry. But layout engines can silently drop nodes (dagre skips edges with missing endpoints — see `dagre-layout.ts:56-57`), and LLM-generated `GraphSpec`s may contain dangling references. Without LVS, a diagram can pass all DRC checks while missing half its content.
+The current rule pipeline assumes the layout is structurally correct and only fixes geometry. But layout engines can silently drop elements (e.g., the Dagre adapter skips edges with missing endpoints — see `dagre-layout.ts:76-78`), and LLM-generated `GraphSpec`s may contain dangling references. Without LVS, a diagram can pass all DRC checks while missing half its content. This applies regardless of which layout engine is used (see `layout-engine-strategy.md` for the pluggable engine design).
 
 ## What to Validate
 
@@ -104,6 +104,8 @@ export class LvsRule implements LayoutRule {
   id = 'lvs';
   description = 'Verify layout structurally matches the graph spec';
   severity: Severity = 'error';
+  phase = 'validation' as const;  // Run before geometric rules (see custom-rule-decks.md)
+  gate = true;                     // Halt pipeline on error (see engine-improvements.md)
 
   check(layout: LayoutResult, spec: GraphSpec): Violation[] {
     const violations: Violation[] = [];
@@ -127,7 +129,7 @@ export class LvsRule implements LayoutRule {
 
 ## Open Questions
 
-1. **Should LVS block the rest of the pipeline?** If nodes are missing, running spacing rules is meaningless. The engine could short-circuit on `error`-severity LVS violations. This would require an engine change (currently all rules always run).
+1. **Should LVS block the rest of the pipeline?** Yes — this is addressed by the `gate` field proposed in `engine-improvements.md` and `custom-rule-decks.md`. With `gate: true`, the engine halts on error-severity violations from this rule. The LVS implementation above includes this field.
 
 2. **Spec validation vs. layout validation.** Dangling refs and duplicate IDs are spec problems, not layout problems. Should these be a separate pre-flight check (`validateSpec()`) rather than a `LayoutRule`? A standalone function would be useful even before layout is computed.
 

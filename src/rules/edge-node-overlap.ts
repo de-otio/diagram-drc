@@ -36,12 +36,10 @@ export class EdgeNodeOverlapRule implements LayoutRule {
 
   private margin: number;
   private iterations: number;
-  private nudgeStep: number;
 
   constructor(options?: EdgeNodeOverlapOptions) {
     this.margin = options?.margin ?? 5;
     this.iterations = options?.iterations ?? 3;
-    this.nudgeStep = options?.nudgeStep ?? 15;
   }
 
   // ── check ───────────────────────────────────────────────────────────
@@ -95,6 +93,15 @@ export class EdgeNodeOverlapRule implements LayoutRule {
 
       for (const group of spec.groups ?? []) {
         const members = new Set(group.children);
+        const edgeCounts = new Map<string, number>();
+        for (const c of group.children) edgeCounts.set(c, 0);
+        for (const e of spec.edges) {
+          if (members.has(e.source) && members.has(e.target)) {
+            edgeCounts.set(e.source, (edgeCounts.get(e.source) ?? 0) + 1);
+            edgeCounts.set(e.target, (edgeCounts.get(e.target) ?? 0) + 1);
+          }
+        }
+
         const intraEdges = spec.edges.filter(
           (e) => members.has(e.source) && members.has(e.target),
         );
@@ -110,24 +117,38 @@ export class EdgeNodeOverlapRule implements LayoutRule {
             if (!n) continue;
 
             if (segRectIntersect(s, t, n, this.margin)) {
-              // Nudge the overlapped node perpendicular to the edge.
-              const dx = t.x - s.x;
-              const dy = t.y - s.y;
-              const len = Math.sqrt(dx * dx + dy * dy) || 1;
+              const dx = Math.abs(t.x - s.x);
+              const dy = Math.abs(t.y - s.y);
 
-              // Perpendicular direction (choose the side away from edge midpoint).
-              let px = -dy / len;
-              let py = dx / len;
-              const edgeMidX = (s.x + t.x) / 2;
-              const edgeMidY = (s.y + t.y) / 2;
-              const toNode = (n.x - edgeMidX) * px + (n.y - edgeMidY) * py;
-              if (toNode < 0) {
-                px = -px;
-                py = -py;
+              if (dy > dx) {
+                // Mostly vertical — push the less-constrained ENDPOINT's
+                // x away from the crossed node so the edge path clears.
+                // Choose the side (left or right of the crossed node) that
+                // makes the edge SHORTER — i.e. closer to the source.
+                const sCount = edgeCounts.get(edge.source) ?? 0;
+                const tCount = edgeCounts.get(edge.target) ?? 0;
+                const ep = tCount <= sCount ? t : s;
+                const anchor = ep === t ? s : t;
+                const clearance = n.width / 2 + ep.width / 2 + this.margin;
+
+                const leftTarget = n.x - clearance;
+                const rightTarget = n.x + clearance;
+                // Pick the side closer to the anchor (source) to minimise edge length.
+                const target = Math.abs(leftTarget - anchor.x) < Math.abs(rightTarget - anchor.x)
+                  ? leftTarget
+                  : rightTarget;
+                ep.x += (target - ep.x) * 0.5;
+              } else {
+                // Mostly horizontal — nudge the crossed node perpendicular.
+                const len = Math.sqrt(dx * dx + dy * dy) || 1;
+                let px = -(t.y - s.y) / len;
+                let py = (t.x - s.x) / len;
+                const mx = (s.x + t.x) / 2;
+                const my = (s.y + t.y) / 2;
+                if ((n.x - mx) * px + (n.y - my) * py < 0) { px = -px; py = -py; }
+                n.x += px * 15;
+                n.y += py * 15;
               }
-
-              n.x += px * this.nudgeStep;
-              n.y += py * this.nudgeStep;
               moved = true;
             }
           }

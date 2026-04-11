@@ -11,6 +11,8 @@ fix():   clone → rules.forEach(r => r.fix()) → check() → { layout, report 
 
 This works well. The improvements below are targeted refinements, not a redesign.
 
+> **Note on async layout:** Per `layout-engine-strategy.md`, the layout step is now async (to accommodate ELK.js as the default engine). The DRC engine itself remains synchronous — it receives a `LayoutResult` after the `await` and runs all rules synchronously. The async boundary lives in the pipeline/`generateDiagram()` layer, not in the engine.
+
 ## Improvement 1: Early Termination on Structural Errors *(proposed)*
 
 **Problem:** If an LVS rule (see `lvs-validation.md`) detects missing nodes, the engine still runs all subsequent geometric rules on an incomplete layout. This wastes work and can produce confusing secondary violations.
@@ -42,6 +44,8 @@ for (const rule of this.rules) {
 
 **Impact:** Small code change, meaningful for structural validation rules.
 
+> **Cross-references:** `lvs-validation.md` now uses `gate: true` in its implementation sketch. `custom-rule-decks.md` includes `gate` alongside the `phase` field in its proposed `LayoutRule` extensions.
+
 **Alternative:** Instead of a `gate` field, the engine could halt on *any* error-severity violation from *any* rule. Simpler, but prevents running spacing fixes when a crossing warning exists.
 
 ## Improvement 2: Export `cloneLayout` *(proposed)*
@@ -70,6 +74,8 @@ export function cloneLayout(layout: LayoutResult): LayoutResult {
 **Effort:** Trivial — move existing code, add export to `src/index.ts`.
 
 **Note:** Several existing rules already perform their own partial cloning (e.g., SpacingRule clones nodes in its repulsion loop). With `cloneLayout` exported, these could be simplified, but that's optional cleanup.
+
+> **Also referenced in:** `custom-rule-decks.md` (Priority 2) and `ai-agent-rule-authoring.md` (Priority 4). This is the canonical description of the change; those documents cross-reference here.
 
 ## Improvement 3: Post-Fix Regression Detection *(proposed)*
 
@@ -124,6 +130,8 @@ fix(layout: LayoutResult, spec: GraphSpec) {
 **Cost:** One extra `check()` call (the baseline). At current graph sizes this is negligible.
 
 **Value:** Surfaces rule conflicts that are otherwise invisible. Particularly useful when users compose custom rule decks where interactions aren't pre-tested.
+
+> **Also referenced in:** `custom-rule-decks.md` (Gap 4). This is the canonical description with implementation detail; that document cross-references here.
 
 ## Improvement 4: Fix Iteration with Convergence *(proposed)*
 

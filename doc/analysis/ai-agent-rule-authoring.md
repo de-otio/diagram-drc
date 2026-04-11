@@ -111,6 +111,19 @@ const xml = generateDiagram(spec, {
 
 **incremental-drc.md** concludes that feedback quality matters more than performance. Constraint primitives reinforce this — since each primitive has a known fix strategy, it can produce high-quality feedback without the rule author having to think about it.
 
+**design-for-readability.md** identifies a prerequisite for style-aware rules like `label-within-bounds` and `color-contrast`: the current `LayoutRule.check(layout, spec)` signature doesn't include style information. That analysis recommends constructor injection (Option 2) for now — meaning constraint primitives that need style context (font metrics, colors) would accept it as a parameter:
+
+```typescript
+constraint('label-fits', {
+  padding: 4,
+  severity: 'error',
+  charWidth: 7,      // approximate px per char (default: 7)
+  fontPadding: 20,   // total horizontal padding inside node (default: 20)
+})
+```
+
+This keeps the constraint API self-contained without requiring engine-level changes. Primitives that don't need style context (spacing, bounds, containment) are unaffected.
+
 ### Two-tier extensibility model
 
 The design becomes two tiers, serving different audiences:
@@ -125,6 +138,14 @@ The design becomes two tiers, serving different audiences:
 | **Feedback/suggestions** | Automatic (from primitive) | Manual (or none) |
 
 Both tiers produce `LayoutRule` objects. They compose freely — a rule deck can mix declarative constraints and imperative rules in any order.
+
+> **Unified rule composition API.** Between this document and `custom-rule-decks.md`, the full API surface for rule composition is:
+> - `constraint()` — create declarative rules from primitives (this document)
+> - `loadRuleDeck()` — load a JSON rule deck config (this document)
+> - `buildRuleDeck()` — selectively override/disable/extend built-in rules (custom-rule-decks.md)
+> - `LayoutRule` interface — write imperative rules with full control (custom-rule-decks.md)
+>
+> All four mechanisms produce `LayoutRule[]` and can be freely mixed.
 
 ### The escape hatch matters
 

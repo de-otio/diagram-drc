@@ -12,22 +12,22 @@ This analysis reviews the API for gaps, inconsistencies, and ergonomic improveme
 
 ```typescript
 import { createEngine } from '@de-otio/diagram-drc';
-import { dagreLayout } from '@de-otio/diagram-drc/layout';
+import { elkEngine } from '@de-otio/diagram-drc/engines/elk';
 import { renderMxGraph } from '@de-otio/diagram-drc/render';
 
-const layout = dagreLayout(spec);
+const layout = await elkEngine().layout(spec);
 const { layout: fixed } = createEngine().fix(layout, spec);
 const xml = renderMxGraph(fixed, spec);
 ```
 
-This is three imports, three calls, and a destructure. For the 90% use case, a single function would be more ergonomic:
+This is three imports, three calls, an `await`, and a destructure. For the 90% use case, a single function would be more ergonomic:
 
 ```typescript
 import { generateDiagram } from '@de-otio/diagram-drc';
 
-const xml = generateDiagram(spec);
+const { xml } = await generateDiagram(spec);
 // or with options:
-const xml = generateDiagram(spec, {
+const { xml } = await generateDiagram(spec, {
   layout: { rankdir: 'LR', ranksep: 100 },
   render: { title: 'My Diagram' },
   rules: buildRuleDeck({ disable: ['rank-compaction'] }),
@@ -37,17 +37,19 @@ const xml = generateDiagram(spec, {
 **Implementation:**
 
 ```typescript
-export function generateDiagram(
+export async function generateDiagram(
   spec: GraphSpec,
   options?: {
+    engine?: LayoutEngine;
     layout?: LayoutOptions;
     render?: RenderOptions;
     rules?: LayoutRule[];
   }
-): { xml: string; report: DrcReport } {
-  const layout = dagreLayout(spec, options?.layout);
-  const engine = createEngine({ rules: options?.rules });
-  const { layout: fixed, report } = engine.fix(layout, spec);
+): Promise<{ xml: string; report: DrcReport }> {
+  const engine = options?.engine ?? elkEngine();
+  const layout = await engine.layout(spec, options?.layout);
+  const drc = createEngine({ rules: options?.rules });
+  const { layout: fixed, report } = drc.fix(layout, spec);
   const xml = renderMxGraph(fixed, spec, options?.render);
   return { xml, report };
 }
@@ -98,24 +100,22 @@ export function validateSpec(spec: GraphSpec): ValidationResult {
 
 ## Gap 3: Layout Options Not Fully Exposed *(proposed)*
 
-**Problem:** `LayoutOptions` is exported as a type but several useful dagre options are not surfaced:
-- `align` — node alignment within ranks ('UL', 'UR', 'DL', 'DR')
-- `acyclicer` — how to handle cycles ('greedy' or undefined)
-- `ranker` — ranking algorithm ('network-simplex', 'tight-tree', 'longest-path')
+**Problem:** `LayoutOptions` is exported as a type but several useful engine-specific options are not surfaced. With the pluggable `LayoutEngine` interface (see `layout-engine-strategy.md`), each engine adapter exposes its own options:
 
-These are dagre features that advanced users might want to tune.
+- **Dagre:** `align` (node alignment within ranks), `ranker` (ranking algorithm)
+- **ELK:** `elk.algorithm` (layered, stress, tree, etc.), `elk.spacing.nodeNode`, `elk.edgeRouting` (polyline, orthogonal, splines)
 
-**Proposed change:** Expose these in `LayoutOptions`:
+**Proposed change:** `LayoutOptions` contains engine-agnostic options (rankdir, ranksep, nodesep, margins). Engine-specific options are passed to the engine adapter:
 
 ```typescript
-export interface LayoutOptions {
-  // ... existing fields ...
-  align?: 'UL' | 'UR' | 'DL' | 'DR';
-  ranker?: 'network-simplex' | 'tight-tree' | 'longest-path';
-}
+const engine = elkEngine({
+  algorithm: 'layered',
+  edgeRouting: 'orthogonal',
+});
+const layout = await engine.layout(spec, { rankdir: 'LR', ranksep: 100 });
 ```
 
-**Effort:** Trivial — pass through to dagre config.
+**Effort:** Small — each engine adapter maps common options and passes through engine-specific ones.
 
 ## Gap 4: Rule Configuration Discovery *(proposed)*
 

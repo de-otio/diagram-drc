@@ -16,7 +16,7 @@ This analysis evaluates whether incremental checking is worth the complexity at 
 ### Full-Check Performance
 
 The existing pipeline:
-- **Layout** (dagre): O(V + E) — typically < 10ms for graphs under 100 nodes
+- **Layout** (ELK or Dagre — see `layout-engine-strategy.md`): O(V + E) — typically < 10ms for graphs under 100 nodes
 - **Rule checks:** Each rule is O(n²) at worst (spacing pairwise comparison)
 - **Rule fixes:** Each rule is O(n²) with iteration (spacing repulsion loop)
 
@@ -64,13 +64,15 @@ Each rule would declare whether it supports incremental checking:
 ```typescript
 // Proposed extension to LayoutRule (not yet implemented)
 interface LayoutRule {
-  // ... existing fields ...
+  // ... existing fields (including phase and gate from custom-rule-decks.md) ...
   scope?: 'local' | 'global';
 }
 ```
 
 - **`local`** rules (spacing, content-margin) can be scoped to the dirty region — only check node pairs where at least one is in the region.
 - **`global`** rules (crossing-minimization, group-proximity) depend on the full graph topology and must always run fully.
+
+> **Note:** `scope` is orthogonal to the `phase` and `gate` fields proposed in `custom-rule-decks.md` and `engine-improvements.md`. `phase` controls execution order, `gate` controls pipeline halting, and `scope` controls spatial scoping for incremental checking. All three could coexist on `LayoutRule` if incremental DRC is implemented in the future.
 
 ### Caching
 
@@ -139,6 +141,8 @@ interface Violation {
 ```
 
 This gives the LLM precise, actionable feedback rather than generic violation messages. One well-guided iteration beats three incremental re-checks.
+
+> **Note:** `llm-feedback-loop.md` independently arrives at the same conclusion and develops the structured suggestion design in detail. See that analysis for the full `SuggestedFix` interface and spec-level feedback proposals.
 
 ### When to Revisit
 

@@ -135,47 +135,44 @@ This mirrors how IC DRC tools use "rule decks" or "tech files" per foundry proce
 
 Rule execution order matters (crossing-minimization before rank-compaction, spacing before content-margin). Built-in rules rely on `builtinRules()` hardcoding the right order. Custom rules have no way to declare ordering preferences.
 
-**Proposed solution — optional `phase` or `priority` field:**
+**Proposed solution — optional `phase` and `gate` fields:**
 
 ```typescript
-// Proposed extension to LayoutRule (not yet implemented)
+// Proposed extensions to LayoutRule (not yet implemented)
 // Current LayoutRule has: id, description, severity, check(), fix()
 interface LayoutRule {
   id: string;
   description: string;
   severity: Severity;
-  phase?: 'validation' | 'structure' | 'spacing' | 'cosmetic';  // proposed ordering hint
+  phase?: 'validation' | 'structure' | 'spacing' | 'cosmetic';
+  gate?: boolean;  // If true, error violations halt the pipeline
   check(layout: LayoutResult, spec: GraphSpec): Violation[];
   fix(layout: LayoutResult, spec: GraphSpec): LayoutResult;
 }
 ```
 
-Phases provide soft ordering when rules are combined from multiple sources. The engine would sort by phase (validation < structure < spacing < cosmetic), then preserve insertion order within each phase. Rules without a phase slot in at the end. The `validation` phase is intended for structural checks like LVS (see `lvs-validation.md`) that should run before any geometric rules.
+- **`phase`** provides soft ordering when rules are combined from multiple sources. The engine sorts by phase (`validation` < `structure` < `spacing` < `cosmetic`), then preserves insertion order within each phase. Rules without a phase slot in at the end. The `validation` phase is intended for structural checks like LVS (see `lvs-validation.md`) that should run before any geometric rules.
+- **`gate`** marks rules whose error-severity violations should halt the pipeline. This is primarily for LVS: if nodes are missing, running spacing rules is meaningless. See `engine-improvements.md` for the engine-side implementation.
 
 This is lighter than a full dependency graph and avoids the complexity of topological sorting.
+
+> **Note:** The `incremental-drc.md` analysis also proposes a `scope?: 'local' | 'global'` field for future incremental checking. This is orthogonal to `phase` and `gate` — `scope` describes whether a rule can be spatially scoped, while `phase` describes when it runs and `gate` describes whether it blocks the pipeline. All three could coexist on `LayoutRule` if needed, but `scope` is deferred until incremental DRC is warranted (see that analysis for rationale).
 
 ### Gap 4: No Rule Validation or Conflict Detection *(proposed)*
 
 If two rules fight (one pushes nodes apart, another pulls them together), the engine silently applies both with no feedback. Virtuoso DRC tools flag rule conflicts.
 
-**Proposed solution — post-fix regression check:**
-
-The engine already runs `check()` after `fix()`. This could be enhanced to detect *regressions* — violations introduced by a fix that weren't present before. A simple diff of before/after violation sets would surface conflicting rules.
-
-```typescript
-const { layout, report } = engine.fix(layout, spec);
-// report.regressions: Violation[]  — new violations introduced by fixes
-```
+**Proposed solution — post-fix regression check.** See `engine-improvements.md` (Improvement 3) for the canonical design and implementation sketch. In brief: the engine diffs violations before and after fixing to surface regressions introduced by fixes.
 
 ### Gap 5: No Documentation or Examples for Rule Authors *(proposed)*
 
 The `LayoutRule` interface is exported but undocumented. A rule author needs to know:
 - What invariants `check()` must maintain (no side effects, deterministic)
 - What invariants `fix()` must maintain (return new LayoutResult, don't mutate input)
-- How to properly clone layouts when modifying
+- How to properly clone layouts when modifying (see `engine-improvements.md` Improvement 2 for the `cloneLayout` export proposal)
 - Common patterns (iterative repulsion, bounding box recalculation, group envelope updates)
 
-**Proposed solution:** A "Writing Custom Rules" guide with a template rule implementation and guidance on the `cloneLayout` utility (currently a private function in `engine.ts`, not exported).
+**Proposed solution:** A "Writing Custom Rules" guide with a template rule implementation and guidance on the `cloneLayout` utility.
 
 ## Recommendations
 
@@ -184,13 +181,21 @@ Prioritized by impact and implementation effort:
 | Priority | Change | Effort | Impact |
 |----------|--------|--------|--------|
 | 1 | `buildRuleDeck()` helper for selective override | Small | High — removes biggest friction point |
-| 2 | Export `cloneLayout` utility for rule authors (currently private in `engine.ts`) | Trivial | Medium — essential for safe `fix()` implementations |
+| 2 | Export `cloneLayout` utility (see `engine-improvements.md`) | Trivial | Medium — essential for safe `fix()` implementations |
 | 3 | "Writing Custom Rules" documentation + template | Small | Medium — reduces barrier to entry |
 | 4 | Named rule deck presets | Medium | Medium — useful once diagram type ecosystem grows |
-| 5 | Optional `phase` field for ordering hints | Small | Low-Medium — useful for multi-source rule composition |
-| 6 | Post-fix regression detection | Medium | Low-Medium — diagnostic, not blocking |
+| 5 | `phase` and `gate` fields on `LayoutRule` | Small | Low-Medium — useful for multi-source rule composition |
+| 6 | Post-fix regression detection (see `engine-improvements.md`) | Medium | Low-Medium — diagnostic, not blocking |
 
 ### Suggested Implementation Order
+
+> **See also:** `ai-agent-rule-authoring.md` proposes a complementary *declarative* tier (`constraint()` factory and JSON rule deck format) aimed at AI-agent rule authoring. That system produces `LayoutRule[]` and composes with everything proposed here. Together, the API surface for rule composition is:
+> - `buildRuleDeck()` — selectively override/disable/extend built-in rules (this document)
+> - `constraint()` — create declarative rules from primitives (ai-agent-rule-authoring.md)
+> - `loadRuleDeck()` — load a JSON rule deck config (ai-agent-rule-authoring.md)
+> - `LayoutRule` interface — write imperative rules with full control (this document)
+>
+> All four mechanisms produce `LayoutRule[]` and can be freely mixed.
 
 **Phase 1 (minimal viable extensibility):**
 - Implement `buildRuleDeck()` helper

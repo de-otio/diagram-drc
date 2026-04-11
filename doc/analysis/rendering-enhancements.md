@@ -28,7 +28,7 @@ interface GraphGroup {
 }
 ```
 
-*Layout:* Dagre supports compound graphs natively — a group node's parent can be another group node. The `dagre-layout.ts` would add parent edges for subgroups:
+*Layout:* Both Dagre and ELK support compound graphs natively — a group node's parent can be another group node. The layout engine adapter would add parent edges for subgroups:
 
 ```typescript
 // Current: only nodes get parents
@@ -69,9 +69,9 @@ if (group.parent) {
 
 2. **Waypoint injection.** For edges that pass near intermediate nodes, add waypoints that route around them. This is essentially obstacle-aware routing.
 
-3. **Leverage dagre routing.** Dagre already computes edge routing with waypoints (`LayoutEdge.points`). The renderer currently uses these points for cross-group edges but ignores them for same-group edges. Using dagre's routing everywhere would improve quality with no new algorithm needed.
+3. **Leverage layout engine routing.** The layout engine already computes edge routing with waypoints (`LayoutEdge.points`). The renderer currently uses these points for cross-group edges but ignores them for same-group edges. Using the engine's routing everywhere would improve quality with no new algorithm needed. With ELK as the default engine (see `layout-engine-strategy.md`), this becomes even more valuable — ELK supports orthogonal and spline routing natively.
 
-**Recommendation:** Option 3 (use dagre routing more) is the best effort/impact tradeoff. Option 1 (port assignment) is a good follow-up.
+**Recommendation:** Option 3 (use engine routing more) is the best effort/impact tradeoff. Option 1 (port assignment) is a good follow-up.
 
 ## Enhancement 3: Theme System *(proposed)*
 
@@ -164,7 +164,7 @@ Or as `mxfile` attributes:
 | Enhancement | Effort | Impact | Priority |
 |-------------|--------|--------|----------|
 | Theme system | Small | Medium | 1 — quick win for LLM output |
-| Use dagre routing everywhere | Small | Medium | 2 — improves edge quality |
+| Use layout engine routing everywhere | Small | Medium | 2 — improves edge quality |
 | Nested groups | Medium | High (for infra diagrams) | 3 — unlocks new diagram types |
 | Diagram metadata in XML | Trivial | Low | 4 — debugging aid |
 | Port assignment for edges | Medium | Medium | 5 — polish |

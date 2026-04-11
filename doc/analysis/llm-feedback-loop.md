@@ -4,7 +4,9 @@
 
 The design philosophy document identifies the core insight: diagram-drc decomposes diagram generation into what LLMs do well (structure) and what algorithms do well (geometry). But the current API treats this as a one-shot pipeline: spec in, XML out. The design philosophy also proposes "incremental DRC" for iterative refinement.
 
-The incremental DRC analysis (`incremental-drc.md`) concluded that incremental *checking* isn't worth the complexity at current scale. This analysis focuses on the other side: making the DRC *output* maximally useful to an LLM for self-correction.
+The incremental DRC analysis (`incremental-drc.md`) concluded that incremental *checking* isn't worth the complexity at current scale, and independently recommended investing in structured feedback instead — the same conclusion this analysis reaches. This document develops that idea in full.
+
+> **Note on async pipeline:** Per `layout-engine-strategy.md`, the layout step is now async (ELK.js is the default engine). The feedback loop described here wraps the full pipeline (`await generateDiagram()` or `await engine.layout()` + sync DRC), so all examples should be read as running inside an async context.
 
 ## The Feedback Problem
 
@@ -139,6 +141,8 @@ ${report.violations.filter(v => v.fixes).map(v =>
 ```
 
 This is a convenience — it formats the report into text that can be appended to an LLM prompt for the refinement loop.
+
+> **Integration with constraint primitives:** `ai-agent-rule-authoring.md` proposes declarative constraint rules that have known fix strategies. These primitives can automatically generate `suggestion` and `fixes` fields, making structured feedback available without rule authors having to implement it manually.
 
 ## Implementation Strategy
 

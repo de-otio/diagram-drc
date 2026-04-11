@@ -128,14 +128,13 @@ describe('EdgeNodeOverlapRule', () => {
   // ── fix ───────────────────────────────────────────────────────────
 
   describe('fix', () => {
-    it('nudges the overlapped node to clear the edge path', () => {
+    it('nudges the crossed node for horizontal edges', () => {
       const { spec, layout } = makeOverlap();
       const fixed = rule.fix(layout, spec);
 
       const b = fixed.nodes.get('b')!;
       const origY = layout.nodes.get('b')!.y;
-      // b should have been nudged perpendicular to the a→c edge
-      // (which is horizontal), so b.y should change
+      // Horizontal edge a→c: b is nudged perpendicular (y changes)
       expect(b.y).not.toBeCloseTo(origY, 0);
     });
 
