@@ -35,6 +35,7 @@ export function builtinRules(): LayoutRule[] {
     new SpacingRule(),
     new EdgeNodeOverlapRule(),
     new EdgeStraighteningRule(),
+    new SpacingRule(),          // second pass — fix overlaps from steps 8–9
     new GroupSnapRule(),
     new ContentMarginRule(),
   ];
