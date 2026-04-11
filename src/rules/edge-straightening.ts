@@ -103,10 +103,14 @@ export class EdgeStraighteningRule implements LayoutRule {
         const angle = axisAngle(s, t);
         if (angle < this.minAngle || angle > 90 - this.minAngle) continue;
 
-        // Move the node with fewer intra-group edges.
+        // Only move leaf nodes (1 intra-group edge). Nodes with multiple
+        // edges are too constrained — moving them cascades into overlaps.
         const sCount = edgeCounts.get(edge.source) ?? 0;
         const tCount = edgeCounts.get(edge.target) ?? 0;
-        const movableNode = tCount <= sCount ? t : s;
+        const movableNode = tCount < sCount ? t : sCount < tCount ? s : null;
+        if (!movableNode) continue; // both equal — skip
+        const movableCount = movableNode === t ? tCount : sCount;
+        if (movableCount > 1) continue; // not a leaf — skip
         const anchorNode = movableNode === t ? s : t;
 
         // In top-down layouts, vertical edges are natural. Align x to
