@@ -72,7 +72,7 @@ describe('EdgeNodeOverlapRule', () => {
       }
     });
 
-    it('ignores cross-group edges', () => {
+    it('detects cross-group edges passing through group members', () => {
       const spec: GraphSpec = {
         nodes: [
           { id: 'a', label: 'A', width: 40, height: 40 },
@@ -97,8 +97,10 @@ describe('EdgeNodeOverlapRule', () => {
         width: 500,
         height: 200,
       };
-      // a→c is cross-group — b should NOT be flagged
-      expect(rule.check(layout, spec)).toHaveLength(0);
+      // a→c is cross-group but b (in g1, same group as a) is in the path
+      const violations = rule.check(layout, spec);
+      expect(violations.length).toBeGreaterThanOrEqual(1);
+      expect(violations[0].affectedElements).toContain('b');
     });
 
     it('reports no overlap for nodes without groups', () => {

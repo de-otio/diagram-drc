@@ -47,18 +47,22 @@ export class EdgeNodeOverlapRule implements LayoutRule {
   check(layout: LayoutResult, spec: GraphSpec): Violation[] {
     const violations: Violation[] = [];
     const seen = new Set<string>();
+    const groups = spec.groups ?? [];
+    const nodeGroup = buildNodeGroupMap(groups);
 
-    for (const group of spec.groups ?? []) {
-      const members = new Set(group.children);
-      const intraEdges = spec.edges.filter(
-        (e) => members.has(e.source) && members.has(e.target),
-      );
+    for (const edge of spec.edges) {
+      const s = layout.nodes.get(edge.source);
+      const t = layout.nodes.get(edge.target);
+      if (!s || !t) continue;
 
-      for (const edge of intraEdges) {
-        const s = layout.nodes.get(edge.source);
-        const t = layout.nodes.get(edge.target);
-        if (!s || !t) continue;
+      // Check every group that contains at least one endpoint.
+      const groupsToCheck = new Set<GraphGroup>();
+      const sg = nodeGroup.get(edge.source);
+      const tg = nodeGroup.get(edge.target);
+      if (sg) groupsToCheck.add(sg);
+      if (tg) groupsToCheck.add(tg);
 
+      for (const group of groupsToCheck) {
         for (const nid of group.children) {
           if (nid === edge.source || nid === edge.target) continue;
           const n = layout.nodes.get(nid);
@@ -87,21 +91,28 @@ export class EdgeNodeOverlapRule implements LayoutRule {
 
   fix(layout: LayoutResult, spec: GraphSpec): LayoutResult {
     const result = cloneLayout(layout);
+    const groups = spec.groups ?? [];
+    const nodeGroup = buildNodeGroupMap(groups);
+
+    // Count intra-group edges per node (used to pick the less-constrained endpoint).
+    const edgeCounts = new Map<string, number>();
+    for (const group of groups)
+      for (const c of group.children) edgeCounts.set(c, 0);
+    for (const e of spec.edges) {
+      const sg = nodeGroup.get(e.source);
+      const tg = nodeGroup.get(e.target);
+      if (sg && tg && sg.id === tg.id) {
+        edgeCounts.set(e.source, (edgeCounts.get(e.source) ?? 0) + 1);
+        edgeCounts.set(e.target, (edgeCounts.get(e.target) ?? 0) + 1);
+      }
+    }
 
     for (let iter = 0; iter < this.iterations; iter++) {
       let moved = false;
 
-      for (const group of spec.groups ?? []) {
+      // Fix only intra-group edges — cross-group fixes cascade badly.
+      for (const group of groups) {
         const members = new Set(group.children);
-        const edgeCounts = new Map<string, number>();
-        for (const c of group.children) edgeCounts.set(c, 0);
-        for (const e of spec.edges) {
-          if (members.has(e.source) && members.has(e.target)) {
-            edgeCounts.set(e.source, (edgeCounts.get(e.source) ?? 0) + 1);
-            edgeCounts.set(e.target, (edgeCounts.get(e.target) ?? 0) + 1);
-          }
-        }
-
         const intraEdges = spec.edges.filter(
           (e) => members.has(e.source) && members.has(e.target),
         );
@@ -163,6 +174,16 @@ export class EdgeNodeOverlapRule implements LayoutRule {
 
     return result;
   }
+}
+
+// ── helpers ───────────────────────────────────────────────────────────
+
+function buildNodeGroupMap(groups: GraphGroup[]): Map<string, GraphGroup> {
+  const m = new Map<string, GraphGroup>();
+  for (const g of groups) {
+    for (const c of g.children) m.set(c, g);
+  }
+  return m;
 }
 
 // ── geometry ──────────────────────────────────────────────────────────
