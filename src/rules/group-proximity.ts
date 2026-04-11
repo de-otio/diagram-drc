@@ -92,6 +92,26 @@ export class GroupProximityRule implements LayoutRule {
       currentLeft += node.width + this.gap;
     }
 
+    // Align all groups to the same top edge (single row) so that
+    // cross-group edges are horizontal and don't cross intra-group nodes.
+    const targetTop = Math.min(
+      ...groupInfos.map((g) => {
+        const n = result.nodes.get(g.spec.id)!;
+        return n.y - n.height / 2;
+      }),
+    );
+    for (const info of groupInfos) {
+      const node = result.nodes.get(info.spec.id)!;
+      const currentTop = node.y - node.height / 2;
+      const dy = targetTop - currentTop;
+      if (Math.abs(dy) < 1) continue;
+      node.y += dy;
+      for (const childId of info.spec.children) {
+        const child = result.nodes.get(childId);
+        if (child) child.y += dy;
+      }
+    }
+
     result.width = currentLeft - this.gap;
     return result;
   }
