@@ -169,46 +169,6 @@ export class EdgeNodeOverlapRule implements LayoutRule {
         if (moved) fitGroup(result, group);
       }
 
-      // Cross-group edges: orthogonal routing creates a horizontal
-      // segment at source.y.  If that segment clips a node in the
-      // target group, shift the source (in the smaller group) above
-      // the clipped node so the segment clears.
-      for (const edge of spec.edges) {
-        const sg = nodeGroup.get(edge.source);
-        const tg = nodeGroup.get(edge.target);
-        if (!sg || !tg || sg.id === tg.id) continue;
-        const s = result.nodes.get(edge.source);
-        const t = result.nodes.get(edge.target);
-        if (!s || !t) continue;
-
-        // Only adjust the node in the smaller group.
-        const movable = sg.children.length <= tg.children.length ? s : t;
-        const targetGroup = movable === s ? tg : sg;
-
-        for (const nid of targetGroup.children) {
-          if (nid === edge.source || nid === edge.target) continue;
-          const n = result.nodes.get(nid);
-          if (!n) continue;
-
-          const nTop = n.y - n.height / 2;
-          const nBot = n.y + n.height / 2;
-          // Check if the horizontal segment at movable.y clips this node.
-          if (movable.y > nTop - this.margin && movable.y < nBot + this.margin) {
-            // Is the node horizontally between source and target?
-            const lo = Math.min(s.x, t.x);
-            const hi = Math.max(s.x, t.x);
-            if (n.x + n.width / 2 > lo && n.x - n.width / 2 < hi) {
-              movable.y = nTop - this.margin - movable.height / 2;
-              moved = true;
-            }
-          }
-        }
-      }
-      // Refit cross-account groups after y-shift.
-      if (moved) {
-        for (const group of groups) fitGroup(result, group);
-      }
-
       if (!moved) break;
     }
 
