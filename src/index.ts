@@ -10,7 +10,7 @@ export type {
 export { DrcEngine, createEngine } from './engine.js';
 
 // Built-in rules
-export { builtinRules, BoundaryAffinityRule, ContentMarginRule, CrossingMinimizationRule, EdgeNodeOverlapRule, GroupProximityRule, GroupSnapRule, MedianPositionRule, RankCompactionRule, SpacingRule, TargetYAlignmentRule } from './rules/index.js';
+export { builtinRules, BoundaryAffinityRule, ContentMarginRule, CrossingMinimizationRule, EdgeNodeOverlapRule, EdgeStraighteningRule, GroupProximityRule, GroupSnapRule, MedianPositionRule, RankCompactionRule, SpacingRule, TargetYAlignmentRule } from './rules/index.js';
 
 // Layout
 export { dagreLayout } from './layout/index.js';

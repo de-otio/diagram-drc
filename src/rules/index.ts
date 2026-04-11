@@ -3,6 +3,7 @@ import { BoundaryAffinityRule } from './boundary-affinity.js';
 import { ContentMarginRule } from './content-margin.js';
 import { CrossingMinimizationRule } from './crossing-minimization.js';
 import { EdgeNodeOverlapRule } from './edge-node-overlap.js';
+import { EdgeStraighteningRule } from './edge-straightening.js';
 import { GroupProximityRule } from './group-proximity.js';
 import { GroupSnapRule } from './group-snap.js';
 import { MedianPositionRule } from './median-position.js';
@@ -14,6 +15,7 @@ export { BoundaryAffinityRule } from './boundary-affinity.js';
 export { ContentMarginRule } from './content-margin.js';
 export { CrossingMinimizationRule } from './crossing-minimization.js';
 export { EdgeNodeOverlapRule } from './edge-node-overlap.js';
+export { EdgeStraighteningRule } from './edge-straightening.js';
 export { GroupProximityRule } from './group-proximity.js';
 export { GroupSnapRule } from './group-snap.js';
 export { MedianPositionRule } from './median-position.js';
@@ -32,6 +34,7 @@ export function builtinRules(): LayoutRule[] {
     new RankCompactionRule(),
     new SpacingRule(),
     new EdgeNodeOverlapRule(),
+    new EdgeStraighteningRule(),
     new GroupSnapRule(),
     new ContentMarginRule(),
   ];
